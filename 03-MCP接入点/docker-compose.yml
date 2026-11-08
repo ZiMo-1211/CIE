@@ -1,0 +1,22 @@
+# Docker安装全模块
+
+version: '3'
+services:
+  # MCP 接入点服务
+  mcp-endpoint-server:
+    image: ghcr.nju.edu.cn/xinnan-tech/mcp-endpoint-server:latest
+    container_name: mcp-endpoint-server
+    restart: always
+    networks:
+      - default
+    ports:
+      - "8004:8004"
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      # 配置文件目录
+      - ./data:/app/data
+networks:
+  default:

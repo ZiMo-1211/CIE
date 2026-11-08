@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "local-stdio-modbus-real": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "modbus_real_mcp"]
+    }
+  }
+}

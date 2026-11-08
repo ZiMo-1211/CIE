@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Modbus DataV Cockpit (Real)</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    /* ===== 毫米波人员感知（radar.js 驱动；不要就整段删掉）===== */
+    .dv-footer .footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .radar-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .radar-chip {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 7px;
+      padding: 7px 13px;
+      border-radius: 10px;
+      border: 1px solid rgba(140, 160, 184, 0.45);
+      background: rgba(140, 160, 184, 0.12);
+      color: #c8d6e5;
+      font-size: clamp(14px, 0.95vw, 18px);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .radar-chip .chip-label {
+      font-size: 0.74em;
+      font-weight: 600;
+      opacity: 0.72;
+      letter-spacing: 0.05em;
+    }
+    .radar-chip[data-tone="on"] {
+      border-color: rgba(25, 245, 193, 0.7);
+      background: rgba(25, 245, 193, 0.14);
+      color: #beffe9;
+      box-shadow: 0 0 16px rgba(25, 245, 193, 0.22);
+    }
+    .radar-chip[data-tone="alarm"] {
+      border-color: rgba(255, 64, 90, 0.9);
+      background: rgba(255, 64, 90, 0.22);
+      color: #ffd7dd;
+      box-shadow: 0 0 20px rgba(255, 64, 90, 0.55);
+      animation: radarPulse 1s ease-in-out infinite;
+    }
+    .radar-metrics {
+      margin-top: 9px;
+      font-size: clamp(12px, 0.78vw, 14px);
+      color: #8fa8c0;
+      font-variant-numeric: tabular-nums;
+    }
+    @keyframes radarPulse { 50% { box-shadow: 0 0 6px rgba(255, 64, 90, 0.2); } }
+  </style>
+</head>
+<body>
+  <div class="dv-bg">
+    <div class="bg-layer bg-radial"></div>
+    <div class="bg-layer bg-grid"></div>
+    <div class="bg-layer bg-scan"></div>
+  </div>
+
+  <main class="screen-wrap">
+    <section class="screen-16x9">
+      <header class="dv-panel dv-header">
+        <div class="header-block header-brand">
+          <p class="brand-kicker">INDUSTRIAL INTERNET DATAV</p>
+          <h1>工业互联网设备监测与联动控制中控大屏</h1>
+          <p class="brand-sub">IIoT Single Screen • Real Device Runtime • Competition Edition</p>
+        </div>
+
+        <div class="header-block header-meta">
+          <div class="meta-row meta-row-time">
+            <span id="wallClock" class="meta-clock">----年--月--日 --:--:--</span>
+          </div>
+          <div class="meta-row meta-row-info">
+            <span id="versionTag" class="version-pill">v2.0.0-real</span>
+            <span id="onlineBadge" class="status-pill">离线</span>
+            <span id="updatedAt" class="meta-text">更新时间: --</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="dv-main">
+        <section class="dv-col dv-left">
+          <article class="dv-panel panel-block sensors-block">
+            <div class="panel-head">
+              <h2>工业现场十合一传感器</h2>
+              <p>边缘实时采集与状态感知</p>
+            </div>
+            <div id="sensorGrid" class="sensor-grid"></div>
+          </article>
+
+          <article class="dv-panel panel-block quality-block">
+            <div class="panel-head">
+              <h2>边缘数据质量</h2>
+              <p>异常计数与采集完整率</p>
+            </div>
+            <div class="quality-grid">
+              <div class="quality-card">
+                <p>异常指标</p>
+                <h3 id="qualityAnomalyCount">0</h3>
+                <span>项</span>
+              </div>
+              <div class="quality-card">
+                <p>完整率</p>
+                <h3 id="qualityCompleteness">100%</h3>
+                <span id="qualityCompletenessSub">10/10</span>
+              </div>
+            </div>
+            <div class="quality-meter">
+              <span id="qualityMeterFill" class="quality-meter-fill"></span>
+            </div>
+          </article>
+        </section>
+
+        <section class="dv-col dv-center">
+          <article class="dv-panel panel-block gauge-block">
+            <div class="panel-head">
+              <h2>综合工况指数</h2>
+              <p>工业环境主指标</p>
+            </div>
+            <div class="chart-shell chart-shell-gauge">
+              <div class="side-stack side-left">
+                <article class="side-card">
+                  <p>CO2</p>
+                  <strong id="gaugeSideCO2">--</strong>
+                  <span>ppm</span>
+                </article>
+                <article class="side-card">
+                  <p>温度</p>
+                  <strong id="gaugeSideTemp">--</strong>
+                  <span>℃</span>
+                </article>
+              </div>
+              <div id="gaugeChart" class="chart chart-gauge"></div>
+              <div class="side-stack side-right">
+                <article class="side-card">
+                  <p>湿度</p>
+                  <strong id="gaugeSideHum">--</strong>
+                  <span>%RH</span>
+                </article>
+                <article class="side-card">
+                  <p>噪声</p>
+                  <strong id="gaugeSideNoise">--</strong>
+                  <span>dB</span>
+                </article>
+              </div>
+            </div>
+          </article>
+
+          <article class="dv-panel panel-block trend-block">
+            <div class="panel-head">
+              <h2>关键指标趋势</h2>
+              <p>CO2 / 温度 / 湿度 / 噪声</p>
+            </div>
+            <div id="trendChart" class="chart chart-trend"></div>
+          </article>
+        </section>
+
+        <section class="dv-col dv-right">
+          <article class="dv-panel panel-block actuator-block">
+            <div class="panel-head">
+              <h2>执行器联动占用</h2>
+              <p>执行器状态与负载</p>
+            </div>
+            <div class="chart-shell chart-shell-actuator">
+              <div class="side-stack side-left">
+                <article class="side-card">
+                  <p>小灯亮度</p>
+                  <strong id="sideBrightness">--</strong>
+                  <span>目标值</span>
+                </article>
+                <article class="side-card">
+                  <p>风扇转速</p>
+                  <strong id="sideFan">--</strong>
+                  <span>目标值</span>
+                </article>
+              </div>
+              <div id="actuatorChart" class="chart chart-actuator"></div>
+              <div class="side-stack side-right">
+                <article class="side-card">
+                  <p>激活执行器</p>
+                  <strong id="sideActiveCount">0/4</strong>
+                  <span>开关数量</span>
+                </article>
+                <article class="side-card">
+                  <p>联动占比</p>
+                  <strong id="sideActivePercent">0%</strong>
+                  <span>当前占用</span>
+                </article>
+              </div>
+            </div>
+          </article>
+
+          <article class="dv-panel panel-block control-block">
+            <div class="panel-head">
+              <h2>设备联动控制台</h2>
+              <p>场景 / 开关 / 模拟量</p>
+            </div>
+
+            <div class="scene-wrap">
+              <button class="scene-btn" data-scene="presentation">展示模式</button>
+              <button class="scene-btn" data-scene="alert">告警模式</button>
+              <button class="scene-btn" data-scene="quiet">静音模式</button>
+            </div>
+
+            <div id="coilWrap" class="coil-wrap"></div>
+
+            <div class="range-block">
+              <div class="range-title">
+                <span>小灯亮度</span>
+                <strong id="brightnessValue">0%</strong>
+              </div>
+              <input id="brightnessRange" type="range" min="0" max="100" value="0" />
+            </div>
+
+            <div class="range-block">
+              <div class="range-title">
+                <span>风扇转速</span>
+                <strong id="fanValue">0%</strong>
+              </div>
+              <input id="fanRange" type="range" min="0" max="100" value="0" />
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <footer class="dv-panel dv-footer">
+        <div class="footer-grid">
+          <section class="footer-segment">
+            <div class="panel-head panel-head-inline">
+              <h2>工业告警队列</h2>
+              <p>阈值触发与联动事件</p>
+            </div>
+            <ul id="alertList" class="alert-list"></ul>
+          </section>
+
+          <section class="footer-segment">
+            <div class="panel-head panel-head-inline">
+              <h2>工业事件日志</h2>
+              <p>控制回执与系统事件追踪</p>
+            </div>
+            <ul id="logList" class="log-list"></ul>
+          </section>
+          <section class="footer-segment radar-seg">
+            <div class="panel-head panel-head-inline">
+              <h2>毫米波人员感知</h2>
+              <p>板载 60GHz 雷达实时判定</p>
+            </div>
+            <div class="radar-chips">
+              <div id="radarProgChip" class="radar-chip" data-tone="off">
+                <span class="chip-label">程序</span><span class="chip-value">--</span>
+              </div>
+              <div id="radarPersonChip" class="radar-chip" data-tone="off">
+                <span class="chip-label">人员</span><span class="chip-value">--</span>
+              </div>
+              <div id="radarStateChip" class="radar-chip" data-tone="off">
+                <span class="chip-label">状态</span><span class="chip-value">--</span>
+              </div>
+            </div>
+            <div id="radarMetrics" class="radar-metrics">等待毫米波数据…</div>
+          </section>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <script src="./vendor/echarts.min.js"></script>
+  <script src="./app.js"></script>
+  <script src="./radar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 运行时产物
+logs/
+*.log
+*.pid
+*.tmp
+
+# 敏感文件：含 MCP token / 设备地址，绝不提交
+.env
+*.env.local
+
+# 截图 / 数据抓包
+*.png
+*.jpg
+*.xwd
+*.pcap
+*.bin
+captures/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 备份但有用的单列出来（index.html.bak 保留，方便回滚）
+!webui/index.html.bak
