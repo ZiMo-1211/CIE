@@ -5,30 +5,26 @@ __pycache__/
 .venv/
 venv/
 
-# 运行时产物
-logs/
+# 杩愯鏃朵骇鐗?logs/
 *.log
 *.pid
 *.tmp
 
-# 敏感文件：含 MCP token / 设备地址，绝不提交
-.env
+# 鏁忔劅鏂囦欢锛氬惈 MCP token / 璁惧鍦板潃锛岀粷涓嶆彁浜?.env
 *.env.local
 
-# 截图 / 数据抓包
-*.png
-*.jpg
+# 鎴浘 / 鏁版嵁鎶撳寘
 *.xwd
 *.pcap
 *.bin
 captures/
 
-# 编辑器 / 系统
+# 缂栬緫鍣?/ 绯荤粺
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# 备份但有用的单列出来（index.html.bak 保留，方便回滚）
+# 澶囦唤浣嗘湁鐢ㄧ殑鍗曞垪鍑烘潵锛坕ndex.html.bak 淇濈暀锛屾柟渚垮洖婊氾級
 !webui/index.html.bak
