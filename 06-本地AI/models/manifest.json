@@ -1,0 +1,18 @@
+{
+  "name": "Qwen3-0.6B",
+  "format": "GGUF",
+  "quantization": "Q4_K_M",
+  "file": "qwen3-0.6b-q4_k_m.gguf",
+  "size_bytes": 396705472,
+  "sha256": "AC2D97712095A558E31573F62F466A3F9D93990898B0EC79D7C974C1780D524A",
+  "runtime": "ollama 0.6.8+spacemit",
+  "model_tag": "qwen3:0.6b",
+  "endpoint": "http://127.0.0.1:11434",
+  "chat_template": "Qwen3 ChatML，预置空 think 块，正文直出",
+  "asr": {
+    "engine": "FunASR",
+    "model": "SenseVoiceSmall",
+    "model_dir": "models/SenseVoiceSmall",
+    "runtime": "xiaozhi-esp32-server (local fun_local)"
+  }
+}

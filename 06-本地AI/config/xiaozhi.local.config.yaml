@@ -1,0 +1,44 @@
+# xiaozhi 本地模型覆盖补丁（交给 scripts/merge_xiaozhi_config.py 深合并）
+#
+# 注意：这不是完整配置文件，只是一层"覆盖补丁"。
+#   合并进容器的 <server>/data/.config.yaml 后，这里没出现的键（server.websocket、
+#   mcp_endpoint、VAD 参数等）会保持容器原有值，不会被清掉。
+#
+# ASR 是否切换由 apply_xiaozhi_local.sh 现场判断：
+#   容器里 import funasr 成功 且 models/SenseVoiceSmall/model.pt 存在 → 切到本地 FunASR
+#   否则自动跳过 ASR（保留原云端 ASR），只把 LLM 切到本地 Ollama
+
+selected_module:
+  # 本地 LLM（板端 Ollama，:11434）
+  LLM: OllamaLLM
+  # 本地 ASR（仅在依赖齐备时生效，见上）
+  ASR: FunASR
+  # 下面三项与镜像默认一致，写出来是为了让补丁自解释
+  VAD: SileroVAD
+  TTS: EdgeTTS
+  Memory: nomem
+  Intent: function_call
+
+ASR:
+  # type: fun_local → 加载 core/providers/asr/fun_local.py（依赖 funasr + torch）
+  FunASR:
+    type: fun_local
+    model_dir: models/SenseVoiceSmall
+    output_dir: tmp/
+    language: zh
+
+LLM:
+  # type: ollama → 加载 core/providers/llm/ollama
+  OllamaLLM:
+    type: ollama
+    model_name: qwen3:0.6b
+    base_url: http://127.0.0.1:11434
+
+# 工业现场助手人设：短句、先结论、不乱编设备状态
+prompt: |
+  你是工业现场监控助手，负责根据毫米波雷达、摄像头和 Modbus 设备的状态回答问题。
+  规则：
+  1. 先给结论，再给一句依据；不超过三句话。
+  2. 只使用工具返回或现场状态里的数据，没有数据就说"当前没有读到"，不要猜测。
+  3. 涉及控制（灯、风扇、继电器）时，先确认设备名和动作，再调用工具。
+  4. 不输出思考过程，不输出 Markdown 代码块。

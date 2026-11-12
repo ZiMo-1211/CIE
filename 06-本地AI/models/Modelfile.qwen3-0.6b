@@ -1,0 +1,28 @@
+FROM ./qwen3-0.6b-q4_k_m.gguf
+
+# Qwen3 ChatML 模板（GGUF 内未携带 chat template，这里补齐）
+TEMPLATE """
+{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}
+{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}
+<|im_start|>assistant
+<think>
+
+</think>
+
+"""
+
+# 工业现场问答：短回答、少发散
+PARAMETER num_ctx 4096
+PARAMETER temperature 0.4
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.05
+PARAMETER num_predict 512
+
+SYSTEM """
+/no_think
+你是工业现场监控助手。回答要短、直接、可执行；涉及设备控制时先确认对象和动作，不要编造设备状态。
+"""

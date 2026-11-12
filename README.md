@@ -31,10 +31,14 @@
                      └──────────────────────────────────────────┘
 ```
 
-## 五个程序一览
+语音链路：麦克风 → SileroVAD（本地）→ FunASR / SenseVoiceSmall（本地）
+          → Qwen3-0.6B（本地 Ollama）→ TTS → 喇叭
+
+## 六个部分一览
 
 | # | 目录 | 程序 | 端口 | 运行位置 |
 |---|---|---|---|---|
+| 0 | `06-本地AI/` | Ollama + Qwen3-0.6B / FunASR | 11434 | 板子宿主机（原生） |
 | 1 | `01-毫米波点云程序/` | `video_real_k1_lite.py` + `launcher.py` | 8091 | 板子宿主机（原生） |
 | 2 | `02-网页大屏/` | `web_real_server.py` | 8090 | Docker 容器 `xiaozhi` |
 | 3 | `03-MCP接入点/` | `main.py`（mcp-endpoint-server） | 8004 | Docker 容器 `xiaozhi` |
@@ -46,6 +50,11 @@
 板子上执行（详细命令见各子目录 README 和根目录 `start_all.sh`）：
 
 ```bash
+# 0. 本地 AI（Ollama + Qwen3-0.6B + FunASR），首次部署先跑一次
+cd <代码包根目录>
+bash 06-本地AI/scripts/start_local_ai.sh
+bash 06-本地AI/scripts/apply_xiaozhi_local.sh xiaozhi
+
 # 1. 毫米波程序（界面 + :8091），启动约需 50 秒
 export LC_ALL=C DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/1000
 cd /home/testk1/mmwave
@@ -62,6 +71,26 @@ docker exec -d xiaozhi bash -lc 'cd /opt/demo-real && set -a && . ./.env && set 
 ```
 
 打开 `http://<板子IP>:8090` 看网页大屏。
+
+## 本地 AI 模型
+
+语音链路不再依赖外部 API：
+
+- **LLM**：`qwen3:0.6b`（Qwen3-0.6B Q4_K_M，约 378 MB），由板端 Ollama 在 `127.0.0.1:11434` 提供。
+- **ASR**：`FunASR` + `SenseVoiceSmall`，在 `xiaozhi` 容器内本地推理；VAD 为 `SileroVAD`。
+- **配置**：`06-本地AI/config/xiaozhi.local.config.yaml` 覆盖到容器的 `data/.config.yaml`，
+  `selected_module.LLM` 指向 `OllamaLLM`，`ASR` 指向 `FunASR`。
+
+```bash
+# 一键准备（模型已随包时可跳过 fetch）
+bash 06-本地AI/scripts/fetch_models.sh
+bash 06-本地AI/scripts/start_local_ai.sh
+bash 06-本地AI/scripts/apply_xiaozhi_local.sh xiaozhi
+bash 06-本地AI/scripts/verify_local_ai.sh xiaozhi
+```
+
+模型文件 SHA256：`AC2D97712095A558E31573F62F466A3F9D93990898B0EC79D7C974C1780D524A`。
+板端实测短问答 **1.4–2.0 s**、生成约 **7–9 tok/s**（详见 `06-本地AI/README.md`）。
 
 ## 关键实测数据
 
@@ -176,8 +205,22 @@ curl http://127.0.0.1:8091/status
 03-MCP接入点/         MCP websocket 注册中心
 04-MCP管道与Modbus工具/ mcp_pipe + modbus 工具封装
 05-标定与调试脚本/    串口探针、点云监视、帧率测试、现场标定记录器
+06-本地AI/            Ollama + Qwen3-0.6B + FunASR 本地语音链路
 ```
 
 ## 许可
 
 内部工程代码，仅用于项目交付与现场调试。
+---
+
+## 关于"本地模型"的现状（重要）
+
+- **LLM 已在本地跑通**：Qwen3-0.6B Q4_K_M 由板端 Ollama 提供（`127.0.0.1:11434`），不再依赖外部 API。
+- **ASR 目前仍走云端**：镜像里没有装了 `funasr`/`torch`，而 `core/providers/asr/fun_local.py` 第一行就是
+  `from funasr import AutoModel`，直接切 FunASR 会让 ASR 启动崩溃。`apply_xiaozhi_local.sh` 会现场检测，
+  缺依赖时**自动只切 LLM、保留原有 ASR**，不会把语音链路搞挂。要在板端跑 ASR，先装 funasr/torch 并下载
+  SenseVoiceSmall（见 `06-本地AI/scripts/fetch_asr_model.sh`）。
+- **模型权重不进 Git**：`qwen3-0.6b-q4_k_m.gguf`（378 MB）和 `spacemit-ollama-toolkit_0.0.8_riscv64.deb`（25 MB）
+  已被 `.gitignore` 排除（GitHub 单文件上限 100 MB），随交付压缩包分发。
+- **配置是深合并，不是覆盖**：`data/.config.yaml` 是覆盖层，里面还有 `mcp_endpoint`（MCP 工具地址）。
+  脚本用 `merge_xiaozhi_config.py` 深合并，保住 `mcp_endpoint` 和 `server.websocket`；配置没变化时不重启容器。

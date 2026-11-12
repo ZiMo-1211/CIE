@@ -1,21 +1,26 @@
 #!/bin/bash
-# 板子上一键拉起全部四个常驻程序（第 5 个"标定记录器"按需另开）
+# 板子上一键拉起全部常驻程序（本地 AI + 毫米波 + 网页 + MCP）
 #
 # 用法：
 #   bash start_all.sh            # 全部拉起
+#   bash start_all.sh ai         # 只拉本地 AI
 #   bash start_all.sh mmwave     # 只拉毫米波
 #   bash start_all.sh web mcp    # 只拉网页 + MCP
 #
 # 说明：docker 服务和 xiaozhi 容器是 unless-stopped，开机自动回来，
-#       这里只负责容器里面那几个用 sleep infinity 常驻、需要手动起的程序。
+#       这里只负责本地 AI 服务，以及容器里面那几个用 sleep infinity 常驻、需要手动起的程序。
 
 set -u
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+LOCAL_AI="$ROOT/06-本地AI"
+[ -d "$LOCAL_AI" ] || LOCAL_AI="/home/testk1/06-本地AI"
+[ -d "$LOCAL_AI" ] || LOCAL_AI="$ROOT/../06-本地AI"
 CONTAINER=xiaozhi
 MMWAVE_DIR=/home/testk1/mmwave
 PY_MAIN=/opt/venv-mcp-official/bin/python      # 这个才有 pymodbus
 PY_EP=/opt/venv-mcp-endpoint/bin/python        # 这个才有 fastapi
 
-WHAT="${*:-mmwave web mcp}"
+WHAT="${*:-ai mmwave web mcp}"
 say() { printf '\033[36m>>> %s\033[0m\n' "$*"; }
 ok()  { printf '    \033[32m✓ %s\033[0m\n' "$*"; }
 bad() { printf '    \033[31m✗ %s\033[0m\n' "$*"; }
@@ -35,9 +40,22 @@ ensure_container() {
     ok "docker + $CONTAINER 就绪"
 }
 
+# ---------- 0. 本地 AI ----------
+start_local_ai() {
+    say "0/5 本地 AI（Qwen3-0.6B + FunASR）"
+    if [ ! -d "$LOCAL_AI" ]; then
+        bad "找不到 $LOCAL_AI"
+        return 1
+    fi
+    bash "$LOCAL_AI/scripts/start_local_ai.sh" || { bad "本地 LLM 起不来"; return 1; }
+    bash "$LOCAL_AI/scripts/apply_xiaozhi_local.sh" "$CONTAINER" || true
+    sleep 3
+    ok "本地 AI 就绪（:11434）"
+}
+
 # ---------- 1. 毫米波 ----------
 start_mmwave() {
-    say "1/4 毫米波点云程序（界面 + :8091）"
+    say "1/5 毫米波点云程序（界面 + :8091）"
     pkill -9 -f launcher.py 2>/dev/null
     sleep 2
     cd "$MMWAVE_DIR" || { bad "找不到 $MMWAVE_DIR"; return 1; }
@@ -54,7 +72,7 @@ start_mmwave() {
 
 # ---------- 2. 网页大屏 ----------
 start_web() {
-    say "2/4 网页大屏（:8090）"
+    say "2/5 网页大屏（:8090）"
     port_up 8090 && { ok "已经在跑"; return 0; }
     docker exec -d $CONTAINER bash -lc \
         "cd /opt/demo-real && nohup $PY_MAIN web_real_server.py > /tmp/web.log 2>&1"
@@ -68,7 +86,7 @@ start_web() {
 
 # ---------- 3. MCP 接入点 ----------
 start_mcp_endpoint() {
-    say "3/4 MCP 接入点（:8004）"
+    say "3/5 MCP 接入点（:8004）"
     port_up 8004 && { ok "已经在跑"; return 0; }
     docker exec -d $CONTAINER bash -lc \
         "cd /opt/mcp-endpoint-server-main && nohup $PY_EP main.py > /tmp/mcp_ep.log 2>&1"
@@ -82,7 +100,7 @@ start_mcp_endpoint() {
 
 # ---------- 4. MCP 管道 ----------
 start_mcp_pipe() {
-    say "4/4 MCP 管道 + Modbus 工具"
+    say "4/5 MCP 管道 + Modbus 工具"
     if docker exec $CONTAINER pgrep -f mcp_pipe.py >/dev/null 2>&1; then
         ok "已经在跑"; return 0
     fi
@@ -99,6 +117,7 @@ start_mcp_pipe() {
 # ---------- 跑 ----------
 ensure_container || exit 1
 FAIL=0
+case "$WHAT" in *ai*)     start_local_ai     || FAIL=1 ;; esac
 case "$WHAT" in *mmwave*) start_mmwave        || FAIL=1 ;; esac
 case "$WHAT" in *web*)    start_web           || FAIL=1 ;; esac
 case "$WHAT" in *mcp*)    start_mcp_endpoint  || FAIL=1
@@ -106,7 +125,8 @@ case "$WHAT" in *mcp*)    start_mcp_endpoint  || FAIL=1
 
 echo
 say "状态汇总"
-echo "    端口: $(ss -lntp 2>/dev/null | grep -oE ':(8090|8091|8004)' | sort -u | tr '\n' ' ')"
+echo "    端口: $(ss -lntp 2>/dev/null | grep -oE ':(11434|8090|8091|8004)' | sort -u | tr '\n' ' ')"
+echo "    本地模型: $(ollama list 2>/dev/null | awk '$1=="qwen3:0.6b"{print $1" "$3" "$4}')"
 echo "    毫米波进程: $(pgrep -c -f launcher.py) 个"
 echo "    容器进程:   $(docker exec $CONTAINER sh -c 'ps -eo args | grep -cE "web_real_server|main.py|mcp_pipe|modbus_real_mcp"' 2>/dev/null) 个"
 [ $FAIL -eq 0 ] && ok "全部就绪" || bad "有程序没起来，看上面的 ✗"

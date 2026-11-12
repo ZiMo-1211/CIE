@@ -5,16 +5,19 @@ __pycache__/
 .venv/
 venv/
 
-# 杩愯鏃朵骇鐗?logs/
+# 运行时产物
+logs/
 *.log
 *.pid
 *.tmp
 
-# 鏁忔劅鏂囦欢锛氬惈 MCP token / 璁惧鍦板潃锛岀粷涓嶆彁浜?.env
+# 敏感文件：含 MCP token / 设备地址，绝不提交
+.env
 *.env.local
+data/.config.yaml.bak
 
-# 鎴浘 / 鏁版嵁鎶撳寘锛堝彧鎸′复鏃舵埅鍥撅紝涓嶅姩椤圭洰鍐呯殑鏂囨。鍥撅級
-/鎴浘*.png
+# 截图 / 数据抓包（只挡临时截图，不动项目内的文档图）
+/截图*.png
 /shot*.png
 /_screenshot*.png
 *.xwd
@@ -22,19 +25,21 @@ venv/
 *.bin
 captures/
 
-# 鏈湴妯″瀷鏉冮噸涓庡畨瑁呭寘锛堜綋绉ぇ锛岄殢浜や粯鍖呭垎鍙戯紝涓嶈繘 git锛?06-鏈湴AI/models/*.gguf
-06-鏈湴AI/vendor/*.deb
+# 本地模型权重与安装包（体积大，随交付包分发，不进 git）
+06-本地AI/models/*.gguf
+06-本地AI/vendor/*.deb
 
-# 缂栬緫鍣?/ 绯荤粺
+# 交付压缩包
+*.7z
+*.zip
+*.tar.gz
+
+# 编辑器 / 系统
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# 澶囦唤浣嗘湁鐢細index.html.bak 闇€瑕佷繚鐣?!webui/index.html.bak
-
-# 交付压缩包（体积大，不进 git）
-*.7z
-*.tar.gz
-*.zip
+# 备份但有用：index.html.bak 需要保留
+!webui/index.html.bak
