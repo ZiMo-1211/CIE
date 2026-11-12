@@ -13,11 +13,17 @@ venv/
 # 鏁忔劅鏂囦欢锛氬惈 MCP token / 璁惧鍦板潃锛岀粷涓嶆彁浜?.env
 *.env.local
 
-# 鎴浘 / 鏁版嵁鎶撳寘
+# 鎴浘 / 鏁版嵁鎶撳寘锛堝彧鎸′复鏃舵埅鍥撅紝涓嶅姩椤圭洰鍐呯殑鏂囨。鍥撅級
+/鎴浘*.png
+/shot*.png
+/_screenshot*.png
 *.xwd
 *.pcap
 *.bin
 captures/
+
+# 鏈湴妯″瀷鏉冮噸涓庡畨瑁呭寘锛堜綋绉ぇ锛岄殢浜や粯鍖呭垎鍙戯紝涓嶈繘 git锛?06-鏈湴AI/models/*.gguf
+06-鏈湴AI/vendor/*.deb
 
 # 缂栬緫鍣?/ 绯荤粺
 .vscode/
@@ -26,5 +32,9 @@ captures/
 Thumbs.db
 desktop.ini
 
-# 澶囦唤浣嗘湁鐢ㄧ殑鍗曞垪鍑烘潵锛坕ndex.html.bak 淇濈暀锛屾柟渚垮洖婊氾級
-!webui/index.html.bak
+# 澶囦唤浣嗘湁鐢細index.html.bak 闇€瑕佷繚鐣?!webui/index.html.bak
+
+# 交付压缩包（体积大，不进 git）
+*.7z
+*.tar.gz
+*.zip
